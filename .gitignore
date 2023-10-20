@@ -1,0 +1,8 @@
+build/
+.cache/
+CMakeCache.txt
+Makefile
+cmake_install.cmake
+CMakeFiles/
+8042_Assignment_2
+.DS_Store

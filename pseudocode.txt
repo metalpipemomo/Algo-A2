@@ -1,0 +1,33 @@
+function insert(rbt, key):
+    newNode = Node(key)
+    newNode.color = RED
+
+    if rbt.root is NIL:
+        newNode.color = BLACK
+        rbt.root = newNode
+    else:
+        insertNode(rbt.root, newNode)
+        fixViolations(rbt, newNode)
+
+function insertNode(root, node):
+    if node.key < root.key:
+        if root.left is not NIL:
+            insertNode(root.left, node)
+        else:
+            root.left = node
+            node.parent = root
+    else:
+        if root.right is not NIL:
+            insertNode(root.right, node)
+        else:
+            root.right = node
+            node.parent = root
+
+function search(root, key):
+    if root is NIL or root.key == key:
+        return root
+    if key < root.key:
+        return search(root.left, key)
+    else:
+        return search(root.right, key)
+
