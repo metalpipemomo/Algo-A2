@@ -44,7 +44,6 @@ std::pair<int, int> hashTableTestForBookDataStructure() {
         book.ISBN += std::to_string(i);
         bookTable.insert(book.ISBN, book);
     }
-    std::cout << bookTable.loadFactor();
     passedTests += assert(bookTable.loadFactor() == 0.625); // 10 elements / 16 slots
     int count = 0;
     for (auto it = bookTable.begin(); it != bookTable.end(); ++it) {
