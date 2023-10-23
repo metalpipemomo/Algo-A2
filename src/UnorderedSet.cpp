@@ -5,68 +5,63 @@
 template <typename T>
 UnorderedSet<T>::UnorderedSet()
 {
+    setSize = 0;
     root = nullptr;
 }
 
 template <typename T>
 UnorderedSet<T>::~UnorderedSet()
 {
-    clearRecursive(root);
+    if (root != nullptr) clearRecursive(root);
 }
 
 template <typename T>
-UnorderedSet<T>::Iterator UnorderedSet<T>::begin() const
+Node<T>* GetLeftmostNode(Node<T>* root)
 {
-    return Iterator{ root };
+    if (root == nullptr || root->left == nullptr) return root;
+
+    return GetLeftmostNode(root->left);
 }
 
 template <typename T>
-UnorderedSet<T>::Iterator UnorderedSet<T>::end() const
+typename UnorderedSet<T>::Iterator UnorderedSet<T>::begin() const
 {
-    std::vector<Node<T>*> queue = { root };
-    Node<T>* node = nullptr;
-    while (queue.size())
+    return Iterator{ GetLeftmostNode(root) };
+}
+
+template <typename T>
+typename UnorderedSet<T>::Iterator UnorderedSet<T>::end() const
+{
+    return Iterator{ nullptr };
+}
+
+template <typename T>
+Node<T>* insert_helper(Node<T>* node, const T& key)
+{
+    if (node->key > key)
     {
-        node = queue.front();
-        queue.erase(queue.begin());
-        if (node->left)
+        if (node->left != nullptr)
         {
-            queue.push_back(node->left);
+            return insert_helper(node->left, key);
         }
-        if (node->right)
+        else
         {
-            queue.push_back(node->right);
+            node->left = new Node<T>(key);
+            node->left->parent = node;
+            return node->left;
         }
     }
-
-    return Iterator{ node };
-}
-
-template <typename T>
-void insert_helper(Node<T>* root, Node<T>* node)
-{
-    if (node->key < root->key)
+    else
     {
-        if (root->left != nullptr)
+        if (node->right != nullptr)
         {
-            insert_helper(root->left, node);
+            return insert_helper(node->right, key);
         }
-        else 
+        else
         {
-            root->left = node;
-            node->parent = root;
-        }
-    }
-    else 
-    {
-        if (root->right != nullptr)
-        {
-            insert_helper(root->right, node);
-        }
-        else 
-        {
-            root->right = node;
-            node->parent = root;
+            node->right = new Node<T>(key);
+            node->right->parent = node;
+            return node->right;
         }
     }
 }
@@ -74,21 +69,21 @@ void insert_helper(Node<T>* root, Node<T>* node)
 template <typename T>
 bool UnorderedSet<T>::insert(const T& key)
 {
-    Node<T>* node = new Node<T>(key);
-    node->color = Color::RED;
-
     if (search(key)) return false;
 
-    if (root == nullptr) {
-        node->color = Color::BLACK;
-        root = node;
+    if (root == nullptr)
+    {
+        root = new Node<T>(key);
+        root->color = Color::BLACK;
     }
     else
     {
-        insert_helper(root, node);
+        Node<T>* node = insert_helper(root, key);
         fixRedRedViolation(node);
     }
-    updateSize();
+
+    setSize++;
+
     return true;
 }
 
@@ -128,8 +123,10 @@ bool UnorderedSet<T>::erase(const T& key)
 template <typename T>
 void UnorderedSet<T>::clear()
 {
+    if (root == nullptr) return;
     clearRecursive(root);
-    updateSize();
+    root = nullptr;
+    setSize = 0;
 }
 
 template <typename T>
@@ -139,21 +136,9 @@ size_t UnorderedSet<T>::size() const
 }
 
 template <typename T>
-void UnorderedSet<T>::updateSize()
-{
-    setSize = getSize(root);
-}
-
-template <typename T>
-size_t UnorderedSet<T>::getSize(Node<T>* node) const
-{
-    if (node == nullptr) return 0;
-    return 1 + getSize(node->left) + getSize(node->right);
-}
-
-template <typename T>
 void UnorderedSet<T>::fixRedRedViolation(Node<T>* node)
 {
+    if (node == nullptr) return;
     while (node != root && node->parent->color == Color::RED)
     {
         if (node->parent == node->parent->parent->left)
@@ -201,7 +186,7 @@ void UnorderedSet<T>::fixRedRedViolation(Node<T>* node)
             }
         }
     }
-    node->parent->color = Color::BLACK;
+    root->color = Color::BLACK;
 }
 
 template <typename T>
@@ -257,11 +242,11 @@ void UnorderedSet<T>::rotateRight(Node<T>* node)
 }
 
 template<typename T>
-void transplant(Node<T>* root, Node<T>* u, Node<T>* v)
+void transplant(UnorderedSet<T>* set, Node<T>* u, Node<T>* v)
 {
-    if (u == root)
+    if (u->parent == nullptr)
     {
-        root = v;
+        set->root = v;
     }
     else if (u == u->parent->left)
     {
@@ -271,17 +256,11 @@ void transplant(Node<T>* root, Node<T>* u, Node<T>* v)
     {
         u->parent->right = v;
     }
-    v->parent = u->parent;
-}
 
-template <typename T>
-Node<T>* treeMin(Node<T>* node)
-{
-    while (node->left != nullptr)
-        {
-            node = node->left;
-        }
-    return node;
+    if (v != nullptr)
+    {
+        v->parent = u->parent;
+    }
 }
 
 template <typename T>
@@ -294,29 +273,32 @@ void UnorderedSet<T>::deleteOneChild(Node<T>* node)
     if (node->left == nullptr)
     {
         child = node->right;
-        transplant(root, node, node->right);
+        transplant(this, node, node->right);
     }
     else if (node->right == nullptr)
     {
         child = node->left;
-        transplant(root, node, node->left);
+        transplant(this, node, node->left);
     }
     else
     {
-        original = treeMin(node->right);
+        original = GetLeftmostNode(node->right);
         originalColor = original->color;
         child = original->right;
         if (original->parent == node)
         {
-            child->parent = original;
+            if (child != nullptr)
+            {
+                child->parent = original;
+            }
         }
         else 
         {
-            transplant(root, original, original->right);
+            transplant(this, original, original->right);
             original->right = node->right;
             original->right->parent = original;
         }
-        transplant(root, node, original);
+        transplant(this, node, original);
         original->left = node->left;
         original->left->parent = original;
         original->color = node->color;
@@ -325,13 +307,15 @@ void UnorderedSet<T>::deleteOneChild(Node<T>* node)
     {
         deleteFix(child);
     }
-    updateSize();
+    setSize--;
 }
 
 template <typename T>
 void UnorderedSet<T>::deleteFix(Node<T>* node)
 {
-    while (node != root && node->color == Color::BLACK)
+    if (node == nullptr) return;
+
+    while (node != nullptr && node != root && node->color == Color::BLACK)
     {
         if (node == node->parent->left)
         {
