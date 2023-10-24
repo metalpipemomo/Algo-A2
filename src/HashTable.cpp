@@ -5,7 +5,7 @@
 #include <iterator>
 
 template <typename K, typename V>
-HashTable<K, V>::HashTable(unsigned int size = 100, double threshold = 0.7)
+HashTable<K, V>::HashTable(unsigned int size, double threshold)
 	: tableSize(size), loadFactorThreshold(threshold)
 {
 	// Initialize vector of buckets with table size
